@@ -37,8 +37,11 @@ gc = gspread.authorize(credentials)
 gauth = GoogleAuth()
 drive = GoogleDrive(gauth)
 
-
+# books ids
 book_teachers_id = '1bqZ8OnYfpM0A6EoVoM_YRurfNmn2UCTAzPYdkZk2vaM'
+book_classes_id = '17DTbRs54Y-7nntaSqaIFEHAcMNa4ven6OxDqWswT3rE'
+book_consolidate_id = '1w8h3dzb4dqSGDrj_QThuES7J_aqrAx_nwXgY7qUDSA0'
+
 book_teachers = gc.open_by_key(book_teachers_id)
 worksheet = book_teachers.worksheet('Docentes')
 #url_teachers = f"https://docs.google.com/spreadsheets/d/{book_teachers_id}/gviz/tq?tqx=out:csv"
@@ -47,7 +50,7 @@ df_teachers= pd.DataFrame(worksheet.get_all_records())
 teachers_list = df_teachers["nombre"].values.tolist()
 teachers_dict = [{"label": k, "value": k} for k in teachers_list]
 
-book_classes_id = '17DTbRs54Y-7nntaSqaIFEHAcMNa4ven6OxDqWswT3rE'
+
 book_classes = gc.open_by_key(book_classes_id)
 worksheet = book_classes.worksheet('Cursos')
 #url_classes= f"https://docs.google.com/spreadsheets/d/{book_classes}/gviz/tq?tqx=out:csv"
@@ -100,45 +103,71 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets,
 server = app.server
 
 app.layout = dbc.Container([
-        #navbar,
-        dbc.Row("Hello"),
-        dbc.Container(
-            dbc.Card([
-                    dbc.CardImg(src="/static/images/placeholder286x180.png", top=True),
-                    dbc.CardBody(
-                        [
-                            html.H4("Card title", className="card-title"),
-                            html.P(
-                                "Some quick example text to build on the card title and "
-                                "make up the bulk of the card's content.",
-                                className="card-text",
-                            ),
-                            dcc.DatePickerSingle(
-                                id='date-picker',
-                                min_date_allowed=date(2022, 1, 1),
-                                max_date_allowed=date(2032, 1, 1),
-                                initial_visible_month=date(2022, 1, 1),
-                                date=date.today()
-                            ),
-                            dcc.Dropdown(
-                                id='drop_teachers',
-                                options=teachers_dict,
-                                value=teachers_list[0]
-                            ),
-                            dcc.Dropdown(
-                                id='drop_class',
-                                options=classes_dict,
-                                value=classes_id[0]
-                            ),
-                            dbc.Button(
-                                "Go somewhere",
-                                id='button_save',
-                                color="primary"),
-                            dbc.Button(
-                                "Show",
-                                id='button_graph',
-                                disabled = True,
-                                color="primary"),
+    dbc.Container(
+        dbc.Card([
+            #dbc.CardImg(src="/static/images/placeholder286x180.png", top=True),
+            dbc.CardBody([
+                # html.H4("Card title", className="card-title"),
+                html.P(
+                    "Complete la información del curso al cual registrará la asistencia.",
+                    className="card-text",
+                ),
+                dbc.Row([
+                    dbc.Col(dbc.Label("Fecha"), md=4),
+                    dbc.Col(
+                        dcc.DatePickerSingle(
+                            id='date-picker',
+                            min_date_allowed=date(2022, 1, 1),
+                            max_date_allowed=date(2032, 1, 1),
+                            initial_visible_month=date(2022, 1, 1),
+                            date=date.today()
+                        ),
+                        md=8
+                    )
+                    
+                ]),     
+                dbc.Row([
+                    dbc.Col(dbc.Label("Docente"), md=4),
+                    dbc.Col(
+                        dcc.Dropdown(
+                            id='drop_teachers',
+                            options=teachers_dict,
+                            value=teachers_list[0]
+                        ),
+                        md=8
+                    )
+                    
+                ]), 
+                dbc.Row([
+                    dbc.Col(dbc.Label("Curso"), md=4),
+                    dbc.Col(
+                        dcc.Dropdown(
+                            id='drop_class',
+                            options=classes_dict,
+                            value=classes_id[0]
+                        ),
+                        md=8
+                    )
+                    
+                ]),
+                # dcc.DatePickerSingle(
+                #     id='date-picker',
+                #     min_date_allowed=date(2022, 1, 1),
+                #     max_date_allowed=date(2032, 1, 1),
+                #     initial_visible_month=date(2022, 1, 1),
+                #     date=date.today()
+                # ),
+                # dcc.Dropdown(
+                #     id='drop_teachers',
+                #     options=teachers_dict,
+                #     value=teachers_list[0]
+                # ),
+                # dcc.Dropdown(
+                #     id='drop_class',
+                #     options=classes_dict,
+                #     value=classes_id[0]
+                # ),
+
                         ]
                     ),
             ]),
@@ -155,14 +184,47 @@ app.layout = dbc.Container([
                 inputStyle={"margin-right": "20px"}
             ),
         ),
+        dbc.Card(
+            dbc.CardBody(
+                dbc.Row([
+                    dbc.Col(md=9),
+                    dbc.Col(
+                        dbc.Button(
+                            "Guardar",
+                            id='button_save',
+                            color="primary"),
+                        md=3
+                    ),
+                    # dbc.Col(
+                    #     dbc.Button(
+                    #         "Show",
+                    #         id='button_graph',
+                    #         disabled = True,
+                    #         color="primary"),
+                    #     md=3                        
+                    # ),
+                    # dbc.Col(md=3)
+                ])
+                
+             )
             
-       
+        )
+        
+                            
+            
 
-        dbc.Container(id="tab-content", className="p-4", fluid=True),
-        #dbc.Row(html.Img(src='assets/images/footnote_federica.png', style={'width':'100%'})),
-    ],
-    fluid=True,
-)
+    ])
+
+# https://stackoverflow.com/questions/50213761/changing-visibility-of-a-dash-component-by-updating-other-component
+# @app.callback(
+#    Output(component_id='div_to_hide', component_property='style'),
+#    [Input(component_id='button_save', component_property='n_clicks')])
+
+# def show_hide_element(trigger):
+#     if trigger:
+#         return {'display': 'none'}
+#     else:
+#         return {'display': 'block'}
 
 
 
@@ -170,7 +232,6 @@ app.layout = dbc.Container([
 # Callback to update list of students
 @app.callback(
     Output(component_id='check_students', component_property='options'),
-    Output(component_id='check_students', component_property='value'),
     Input(component_id='drop_class', component_property='value')
     )
 def update_list(selec_class):
@@ -188,20 +249,22 @@ def update_list(selec_class):
     class_list = list(zip(df_class.codigo, df_class.nombre))
     class_dict = [{"label": k[1], "value": k[1]} for k in class_list]
     
-    return class_dict, list()
+    return class_dict
 
 @app.callback(
-    Output("button_graph", "disabled"),
+    #Output("button_graph", "disabled"),
+    Output(component_id='check_students', component_property='value'),
     [Input("button_save", "n_clicks")],    
     [Input('drop_class', 'value')],
     [Input('date-picker', 'date')],
     [Input('drop_teachers', 'value')],
     [State("check_students", "value")], 
 )
-def do_something(trigger, selec_class, date_picked, teacher_name, values):
-    if trigger:        
+def save_in_googlesheets(trigger, selec_class, date_picked, teacher_name, values):
+    if trigger:
+        if values == None:
+            values = []
         book_class_id = classes_list[selec_class]
-        sheet_estudiantes = 'Estudiantes'
         book_class = gc.open_by_key(book_class_id)
         worksheet = book_class.worksheet('Estudiantes')
         #url_class = f"https://docs.google.com/spreadsheets/d/{book_class}/gviz/tq?tqx=out:csv&sheet={'Estudiantes'}"
@@ -210,16 +273,16 @@ def do_something(trigger, selec_class, date_picked, teacher_name, values):
         df = df_class[df_class['nombre'].isin(values)]
         df.insert(0, 'fecha', date_picked)
         df['curso'] = selec_class
-        df['prof_reporta'] = teacher_name  
-        #open the google spreadsheet (where 'PY to Gsheet Test' is the name of my sheet)
-        #book = gc.open(selec_class)
-        #select the first sheet 
-        
-        # dataframe (create or import it)
+        df['prof_reporta'] = teacher_name 
         df_values = df.values.tolist()
+        # save in class id
         gs = gc.open_by_key(book_class_id)
         gs.values_append('Faltas', {'valueInputOption': 'RAW'}, {'values': df_values})
-        return False
+        # save in consolidate sheet
+        gs = gc.open_by_key(book_consolidate_id)
+        gs.values_append('Consolidado', {'valueInputOption': 'RAW'}, {'values': df_values})
+        #return False, list()
+        return list()
     else:
         return dash.no_update
 
