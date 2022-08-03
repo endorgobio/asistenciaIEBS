@@ -19,6 +19,7 @@ import pygsheets
 import gspread
 import pandas as pd
 from datetime import date
+from plotly.offline import plot
 
 
 
@@ -150,81 +151,72 @@ app.layout = dbc.Container([
                     )
                     
                 ]),
-                # dcc.DatePickerSingle(
-                #     id='date-picker',
-                #     min_date_allowed=date(2022, 1, 1),
-                #     max_date_allowed=date(2032, 1, 1),
-                #     initial_visible_month=date(2022, 1, 1),
-                #     date=date.today()
-                # ),
-                # dcc.Dropdown(
-                #     id='drop_teachers',
-                #     options=teachers_dict,
-                #     value=teachers_list[0]
-                # ),
-                # dcc.Dropdown(
-                #     id='drop_class',
-                #     options=classes_dict,
-                #     value=classes_id[0]
-                # ),
-
-                        ]
-                    ),
             ]),
-                      
-                      
-            fluid=True
-        ),
+        ]),
+        fluid=True
+    ),
+    html.Div(
         dbc.Container(
             dcc.Checklist(
-                id='check_students',
-                #options=class1A_dict,
-                style={"display":"block"},
-                labelStyle={'display': 'block'},
-                inputStyle={"margin-right": "20px"}
+            id='check_students',
+            #options=class1A_dict,
+            style={"display":"block"},
+            labelStyle={'display': 'block'},
+            inputStyle={"margin-right": "20px"}
             ),
         ),
-        dbc.Card(
-            dbc.CardBody(
-                dbc.Row([
-                    dbc.Col(md=9),
-                    dbc.Col(
-                        dbc.Button(
-                            "Guardar",
-                            id='button_save',
-                            color="primary"),
-                        md=3
-                    ),
-                    # dbc.Col(
-                    #     dbc.Button(
-                    #         "Show",
-                    #         id='button_graph',
-                    #         disabled = True,
-                    #         color="primary"),
-                    #     md=3                        
-                    # ),
-                    # dbc.Col(md=3)
-                ])
-                
-             )
-            
-        )
+        id='div_to_hide',
+        style= {'display': 'block'}
         
-                            
+    ),
+    html.Div(
+    #dbc.Container(
+        dbc.Container(
+            dbc.Col(dcc.Graph(id="graph"), width=12),
+            fluid=True
+        ),
+        id='div_to_show',
+        style= {'display': 'none'}
+        
+    ),
+    dbc.Card(
+        dbc.CardBody(
+            dbc.Row([
+                dbc.Col(md=9),
+                dbc.Col(
+                    dbc.Button(
+                        "Guardar",
+                        id='button_save',
+                        color="primary"),
+                    md=3
+                ),
+                # dbc.Col(
+                #     dbc.Button(
+                #         "Show",
+                #         id='button_graph',
+                #         disabled = True,
+                #         color="primary"),
+                #     md=3                        
+                # ),
+                # dbc.Col(md=3)
+            ])
+                
+        )
             
-
-    ])
+    )
+ ])
 
 # https://stackoverflow.com/questions/50213761/changing-visibility-of-a-dash-component-by-updating-other-component
 # @app.callback(
-#    Output(component_id='div_to_hide', component_property='style'),
-#    [Input(component_id='button_save', component_property='n_clicks')])
+#     Output(component_id='div_to_hide', component_property='style'),
+#     Output(component_id='div_to_show', component_property='style'),
+#     [Input(component_id='button_save', component_property='n_clicks')])
 
 # def show_hide_element(trigger):
 #     if trigger:
-#         return {'display': 'none'}
+#         return {'display': 'none'}, {'display': 'block'}
 #     else:
-#         return {'display': 'block'}
+#         return {'display': 'block'}, {'display': 'none'}
 
 
 
@@ -254,13 +246,20 @@ def update_list(selec_class):
 @app.callback(
     #Output("button_graph", "disabled"),
     Output(component_id='check_students', component_property='value'),
+    Output(component_id='div_to_hide', component_property='style'),
+    Output(component_id='div_to_show', component_property='style'),
+    Output(component_id='graph', component_property='figure'),
     [Input("button_save", "n_clicks")],    
     [Input('drop_class', 'value')],
     [Input('date-picker', 'date')],
     [Input('drop_teachers', 'value')],
     [State("check_students", "value")], 
 )
-def save_in_googlesheets(trigger, selec_class, date_picked, teacher_name, values):
+def save_in_googlesheets(trigger, 
+                         selec_class, 
+                         date_picked, 
+                         teacher_name, 
+                         values):
     if trigger:
         if values == None:
             values = []
@@ -276,13 +275,23 @@ def save_in_googlesheets(trigger, selec_class, date_picked, teacher_name, values
         df['prof_reporta'] = teacher_name 
         df_values = df.values.tolist()
         # save in class id
-        gs = gc.open_by_key(book_class_id)
-        gs.values_append('Faltas', {'valueInputOption': 'RAW'}, {'values': df_values})
+        book_class = gc.open_by_key(book_class_id)
+        book_class.values_append('Faltas', {'valueInputOption': 'RAW'}, {'values': df_values})
         # save in consolidate sheet
-        gs = gc.open_by_key(book_consolidate_id)
-        gs.values_append('Consolidado', {'valueInputOption': 'RAW'}, {'values': df_values})
+        book_consolidate = gc.open_by_key(book_consolidate_id)
+        book_consolidate.values_append('Consolidado', {'valueInputOption': 'RAW'}, {'values': df_values})
         #return False, list()
-        return list()
+        # Create graph
+        
+        worksheet = book_consolidate.worksheet('Consolidado')
+        df_asistencia = pd.DataFrame(worksheet.get_all_records())
+        df_cum = df_asistencia.groupby("fecha").codigo.agg(conteo=('count'))
+        df_cum.reset_index(inplace=True)
+        df_cum = df_cum.sort_values(by=['fecha'])
+       
+        fig = px.line(df_cum, x="fecha", y="conteo", title='Precio promedio de la habichuela en Medelín')
+
+        return list(), {'display': 'none'}, {'display': 'block'}, fig
     else:
         return dash.no_update
 
